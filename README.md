@@ -12,11 +12,3 @@ dotnet run
 ```
 
 API будет доступно на http://localhost:5120, OpenAPI при Development.
-
-## Слои
-- Core: доменные модели и интерфейсы, `services.AddCore()`
-- Application: обработчики случаев использования, `services.AddApplication()`
-- Infrastructure: реализации портов (например, Postgres), `services.AddInfrastructure()`
-- Api: минимальный хост, контроллеры, Swagger/OpenAPI
-
-Здоровье: GET /health
