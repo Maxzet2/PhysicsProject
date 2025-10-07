@@ -1,0 +1,6 @@
+@PhysicsProject.Api_HostAddress = http://localhost:5120
+
+GET {{PhysicsProject.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
