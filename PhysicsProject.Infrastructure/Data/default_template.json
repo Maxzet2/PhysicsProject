@@ -1,0 +1,53 @@
+[
+  {
+    "statement": "Тело движется с ускорением a={a} м/с^2 в течение t={t} с. Найдите скорость.",
+    "parameters": { "a": 2, "t": 3 },
+    "answerExpression": "{a}*{t}"
+  },
+  {
+    "statement": "Из состояния покоя тело свободно падает t={t} с. Какова скорость в конце падения? (g=9.8 м/с^2)",
+    "parameters": { "t": 4, "g": 9.8 },
+    "answerExpression": "{g}*{t}"
+  },
+  {
+    "statement": "Камень брошен горизонтально со скоростью v0={v0} м/с. Какой путь он пролетит за t={t} с?",
+    "parameters": { "v0": 6, "t": 5 },
+    "answerExpression": "{v0}*{t}"
+  },
+  {
+    "statement": "Сила F={F} Н действует на тело массой m={m} кг. Чему равно ускорение?",
+    "parameters": { "F": 12, "m": 3 },
+    "answerExpression": "{F}/{m}"
+  },
+  {
+    "statement": "Тело прошло путь S={S} м за время t={t} с. Найдите среднюю скорость.",
+    "parameters": { "S": 50, "t": 10 },
+    "answerExpression": "{S}/{t}"
+  },
+  {
+    "statement": "Работа A={A} Дж совершена при перемещении d={d} м. Какова сила?",
+    "parameters": { "A": 40, "d": 5 },
+    "answerExpression": "{A}/{d}"
+  },
+  {
+    "statement": "Энергия кинетическая Ek = 0.5*m*v^2. m={m} кг, v={v} м/с. Найдите Ek.",
+    "parameters": { "m": 2, "v": 4 },
+    "answerExpression": "0.5*{m}*{v}*{v}"
+  },
+  {
+    "statement": "Потенциальная энергия Ep = m*g*h. m={m} кг, h={h} м. Возьмите g=9.8.",
+    "parameters": { "m": 3, "h": 2, "g": 9.8 },
+    "answerExpression": "{m}*{g}*{h}"
+  },
+  {
+    "statement": "Плотность ρ = m/V. m={m} кг, V={V} м^3. Найдите плотность.",
+    "parameters": { "m": 5, "V": 2 },
+    "answerExpression": "{m}/{V}"
+  },
+  {
+    "statement": "Мощность P = A/t. A={A} Дж, t={t} с. Найдите мощность.",
+    "parameters": { "A": 120, "t": 8 },
+    "answerExpression": "{A}/{t}"
+  }
+]
+

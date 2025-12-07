@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Вход · Physics Project</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav">
+        <div class="nav-title"><a href="/">Physics Project</a></div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="/register.html">Создать аккаунт</a>
+        </div>
+      </nav>
+
+      <section class="hero" style="padding-top: 2rem;">
+        <div class="card">
+          <h2>Вход в систему</h2>
+          <form id="loginForm">
+            <label for="username">Имя пользователя</label>
+            <input id="username" name="username" type="text" placeholder="student01" required />
+
+            <label for="password">Пароль</label>
+            <input id="password" name="password" type="password" placeholder="Пароль" required />
+
+            <button class="btn" type="submit" style="width: 100%;">Войти</button>
+          </form>
+          <div id="message" class="message error" style="display: none;"></div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        Нет аккаунта? <a class="link" href="/register.html">Зарегистрируйтесь</a>
+      </footer>
+    </div>
+
+    <script>
+      const form = document.getElementById('loginForm');
+      const messageEl = document.getElementById('message');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        messageEl.style.display = 'none';
+        messageEl.textContent = '';
+
+        const username = form.username.value.trim();
+        const password = form.password.value.trim();
+
+        if (!username || !password) {
+          showError('Заполните все поля');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ UserName: username, Password: password })
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Ошибка входа');
+          }
+
+          const data = await response.json();
+          if (!data || !data.userId || data.userId === '00000000-0000-0000-0000-000000000000') {
+            throw new Error('Неверное имя пользователя или пароль');
+          }
+
+          // при успехе логина:
+          localStorage.setItem('pp_user', JSON.stringify({ username: data.userName, userId: data.userId, loggedIn: true }));
+          window.location.href = '/';
+        } catch (error) {
+          showError(error.message || 'Не удалось войти');
+        }
+      });
+
+      function showError(text) {
+        messageEl.textContent = text;
+        messageEl.style.display = 'block';
+      }
+    </script>
+  </body>
+</html>
+

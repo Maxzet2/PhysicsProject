@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Регистрация · Physics Project</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav">
+        <div class="nav-title"><a href="/">Physics Project</a></div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="/login.html">Уже есть аккаунт</a>
+        </div>
+      </nav>
+
+      <section class="hero" style="padding-top: 2rem;">
+        <div class="card">
+          <h2>Создание аккаунта</h2>
+          <form id="registerForm">
+            <label for="username">Имя пользователя</label>
+            <input id="username" name="username" type="text" placeholder="student01" required />
+
+            <label for="password">Пароль</label>
+            <input id="password" name="password" type="password" placeholder="Пароль" required />
+
+            <button class="btn" type="submit" style="width: 100%;">Зарегистрироваться</button>
+          </form>
+          <div id="message" class="message" style="display: none;"></div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        Уже зарегистрированы? <a class="link" href="/login.html">Войдите в систему</a>
+      </footer>
+    </div>
+
+    <script>
+      const form = document.getElementById('registerForm');
+      const messageEl = document.getElementById('message');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        messageEl.style.display = 'none';
+        messageEl.classList.remove('error');
+
+        const username = form.username.value.trim();
+        const password = form.password.value.trim();
+
+        if (!username || !password) {
+          showMessage('Заполните все поля', true);
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Отправляем поля в том виде, как ожидает сервер: UserName и Password
+            body: JSON.stringify({ UserName: username, Password: password })
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Ошибка регистрации');
+          }
+
+          const data = await response.json().catch(() => null);
+          const storedUserName = data?.userName ?? username;
+          const storedUserId = data?.userId ?? null;
+
+          // Сохранить пользователя в localStorage и перейти на главную страницу (чтобы сразу начать тест)
+          localStorage.setItem('pp_user', JSON.stringify({ username: storedUserName, userId: storedUserId, loggedIn: true }));
+          // перенаправляем на главную
+          window.location.href = '/';
+        } catch (error) {
+          showMessage(error.message || 'Не удалось зарегистрироваться', true);
+        }
+      });
+
+      function showMessage(text, isError = false) {
+        messageEl.textContent = text;
+        messageEl.style.display = 'block';
+        messageEl.classList.toggle('error', isError);
+      }
+    </script>
+  </body>
+</html>
+

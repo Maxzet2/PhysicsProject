@@ -14,20 +14,27 @@ public sealed class UserService : IUserService
         _users = users;
     }
 
-    public async Task<User> RegisterAsync(string email, string password, CancellationToken ct)
+    public async Task<User> RegisterAsync(string userName, string password, CancellationToken ct)
     {
-        var existing = await _users.FindByEmailAsync(email, ct);
+        var existing = await _users.FindByUserNameAsync(userName, ct);
         if (existing is not null)
-            throw new InvalidOperationException("Email already registered");
+            throw new InvalidOperationException("UserName already registered");
 
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Email = email
+            UserName = userName
         };
         user.SetPasswordHash(HashPassword(password));
         await _users.AddAsync(user, ct);
         return user;
+    }
+
+    public async Task<User?> AuthenticateAsync(string userName, string password, CancellationToken ct)
+    {
+        var existing = await _users.FindByUserNameAsync(userName, ct);
+        if (existing is null) return null;
+        return VerifyPassword(password, existing.PasswordHash) ? existing : null;
     }
 
     private static string HashPassword(string password)
@@ -37,6 +44,9 @@ public sealed class UserService : IUserService
         var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
         return Convert.ToHexString(bytes);
     }
+
+    private static bool VerifyPassword(string password, string hash)
+        => HashPassword(password).Equals(hash, StringComparison.OrdinalIgnoreCase);
 }
 
 

@@ -11,6 +11,8 @@ public static class CoreServiceCollectionExtensions
         services.AddCoreAbstractions();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<IStudyPlanService, StudyPlanService>();
+        services.AddScoped<ISectionFlowService, SectionFlowService>();
         return services;
     }
 }

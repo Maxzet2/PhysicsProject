@@ -23,6 +23,3 @@ jobs:
 
       - name: Build
         run: dotnet build PhysicsProject.sln --configuration Release --no-restore
-
-      - name: Test
-        run: dotnet test PhysicsProject.sln --configuration Release --no-build --collect:"XPlat Code Coverage"

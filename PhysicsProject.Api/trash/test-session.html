@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Сессия теста · Physics Project</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav">
+        <div class="nav-title"><a href="/">Physics Project</a></div>
+        <div class="actions" id="userPanel">
+          <span id="userName" class="stat-pill"></span>
+          <button id="logoutBtn" class="btn btn-secondary" type="button">Выйти</button>
+        </div>
+      </nav>
+
+      <main class="hero" style="padding-top: 2rem; width: 100%;">
+        <div class="card" id="sessionCard" style="max-width: 860px; width: 100%;">
+          <div id="questionArea" class="question-card" style="display: none;">
+            <h3 id="questionTitle"></h3>
+            <p id="questionText" style="line-height: 1.6;"></p>
+
+            <div class="answer-input">
+              <label for="answerInput">Ваш ответ</label>
+              <input id="answerInput" type="text" placeholder="Введите числовой или текстовый ответ" />
+            </div>
+
+            <div class="actions" style="justify-content: flex-start;">
+              <button class="btn" id="submitBtn">Отправить ответ</button>
+              <button class="btn btn-secondary" id="skipBtn">Пропустить</button>
+            </div>
+
+            <div class="stats" id="stats"></div>
+          </div>
+
+          <div id="emptyState" class="empty-state">
+            Здесь появятся вопросы после начала теста.
+          </div>
+        </div>
+
+        <div class="card" style="max-width: 860px; width: 100%; margin-top: 1.5rem;">
+          <h2>Итоги</h2>
+          <div id="resultSummary" style="color: #cbd5f5;">
+            Завершите тест, чтобы посмотреть результат и статистику ответов.
+          </div>
+          <div class="actions" style="margin-top: 1.2rem;">
+            <button class="btn btn-secondary" id="finishBtn" style="display: none;">Завершить тест</button>
+          </div>
+          <div class="log" id="log"></div>
+        </div>
+      </main>
+
+      <footer class="footer">
+        Возникли вопросы? Напишите преподавателю или откройте новую сессию.
+      </footer>
+    </div>
+
+    <script>
+      const API_BASE = '';
+      const userStorageKey = 'pp_user';
+
+      const state = {
+        templateId: null,
+        sessionId: null,
+        items: [],
+        index: 0,
+        stats: { correct: 0, total: 0 }
+      };
+
+      const userPanel = document.getElementById('userPanel');
+      const userNameEl = document.getElementById('userName');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const startBtn = document.createElement('button');
+      startBtn.className = 'btn';
+      startBtn.id = 'startBtn';
+      startBtn.textContent = 'Начать тест';
+
+      const questionArea = document.getElementById('questionArea');
+      const emptyState = document.getElementById('emptyState');
+      const questionTitle = document.getElementById('questionTitle');
+      const questionText = document.getElementById('questionText');
+      const answerInput = document.getElementById('answerInput');
+      const statsEl = document.getElementById('stats');
+      const resultSummary = document.getElementById('resultSummary');
+      const logEl = document.getElementById('log');
+      const finishBtn = document.getElementById('finishBtn');
+
+      // Config UI (will be inserted above questionArea)
+      const configContainer = document.createElement('div');
+      configContainer.className = 'card';
+      configContainer.style.maxWidth = '860px';
+      configContainer.style.marginBottom = '1rem';
+      configContainer.innerHTML = `
+        <div style="display:flex;gap:1rem;align-items:center;justify-content:space-between;">
+          <div style="flex:1;">
+            <label>Режим
+              <select id="configMode" style="margin-left:0.5rem;">
+                <option value="Normal">Обычный</option>
+                <option value="Timed">На время</option>
+                <option value="Training">Тренировка</option>
+              </select>
+            </label>
+            <label style="margin-left:1rem;">Количество задач
+              <input id="configNum" type="number" value="10" min="1" max="50" style="width:5rem;margin-left:0.5rem;" />
+            </label>
+          </div>
+          <div>
+          </div>
+        </div>
+      `;
+
+      // Attach start button into config container
+      configContainer.querySelector('div').appendChild(startBtn);
+
+      // Place config above session card
+      const sessionCard = document.getElementById('sessionCard');
+      sessionCard.parentNode.insertBefore(configContainer, sessionCard);
+
+      initPage();
+
+      function getCurrentUser() {
+        try {
+          const raw = localStorage.getItem(userStorageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      async function initPage() {
+        const user = getCurrentUser();
+        if (user) userNameEl.textContent = user.username || user.userName || 'Неизвестный пользователь';
+        else userNameEl.textContent = 'Гость';
+
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem(userStorageKey);
+          window.location.href = '/login.html';
+        });
+
+        startBtn.addEventListener('click', startFromConfig);
+
+        // Read query params if any
+        const params = new URLSearchParams(window.location.search);
+        const qNum = params.get('numItems');
+        const qMode = params.get('mode');
+        if (qNum) document.getElementById('configNum').value = qNum;
+        if (qMode) document.getElementById('configMode').value = qMode;
+
+        await loadDefaultTemplate();
+      }
+
+      async function loadDefaultTemplate() {
+        try {
+          const response = await fetch(`${API_BASE}/api/templates/default`);
+          if (!response.ok) throw new Error('Не удалось получить шаблон');
+          const data = await response.json();
+          state.templateId = data.id;
+          log('Шаблон задач получен.');
+        } catch (error) {
+          log(`Ошибка загрузки шаблона: ${error.message}`);
+        }
+      }
+
+      async function startFromConfig() {
+        const numItems = Number(document.getElementById('configNum').value || 10);
+        const mode = document.getElementById('configMode').value || 'Normal';
+        const user = getCurrentUser();
+
+        // Hide config UI
+        configContainer.style.display = 'none';
+
+        startBtn.disabled = true;
+        log('Создаём демо-сессию...');
+        try {
+          // Попробуем вызвать demo endpoint, который возвращал JSON ранее
+          const demoResp = await fetch(`${API_BASE}/api/demo/create-demo-session?numItems=${numItems}`, {
+            method: 'POST'
+          });
+          if (!demoResp.ok) throw new Error(await demoResp.text());
+          const demoData = await demoResp.json();
+
+          if (demoData.sessionId || demoData.id) {
+            // Если demo-эндпоинт вернул идентификатор в поле `id`, используем его как сессионный id.
+            state.sessionId = demoData.sessionId ?? demoData.id;
+
+            // Если demo вернул структуру с вопросами (DemoQuestion), переключаемся в локальный demoMode
+            if (demoData.items && Array.isArray(demoData.items)) {
+              state.demoMode = true;
+              state.items = (demoData.items || []).map((q, i) => ({
+                itemId: q.id ?? q.itemId ?? `demo-${i}`,
+                statement: q.statement ?? q.Statement ?? q.StatementText ?? q.title ?? '',
+                options: q.options ?? q.Options ?? null
+              }));
+              state.index = 0;
+              state.stats = { correct: 0, total: 0 };
+              // показать кнопку завершения когда сессия запущена
+              if (finishBtn) finishBtn.style.display = 'inline-flex';
+              renderQuestion();
+            } else {
+              // Если demo вернул только id и сервер поддерживает сессии по этому id, пробуем загрузить сессию
+              await refreshSession();
+              if (finishBtn) finishBtn.style.display = 'inline-flex';
+            }
+          } else if (demoData.items && Array.isArray(demoData.items)) {
+            // демо endpoint может вернуть сразу набор вопросов (без id)
+            state.demoMode = true;
+            state.items = (demoData.items || []).map((q, i) => ({
+              itemId: q.id ?? q.itemId ?? `demo-${i}`,
+              statement: q.statement ?? q.Statement ?? q.title ?? '',
+              options: q.options ?? q.Options ?? null
+            }));
+            state.index = 0;
+            state.stats = { correct: 0, total: 0 };
+            if (finishBtn) finishBtn.style.display = 'inline-flex';
+            renderQuestion();
+          } else {
+            // fallback: try to create session via /api/sessions (if logged-in)
+            if (user && user.userId) {
+              const resp = await fetch(`${API_BASE}/api/sessions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.userId, templateId: state.templateId, numItems, mode })
+              });
+              if (!resp.ok) throw new Error(await resp.text());
+              const data = await resp.json();
+              state.sessionId = data.sessionId;
+              await refreshSession();
+              if (finishBtn) finishBtn.style.display = 'inline-flex';
+            } else {
+              throw new Error('Не удалось получить данные для сеанса.');
+            }
+          }
+
+          resultSummary.innerHTML = 'Тест запущен. Отвечайте на вопросы.';
+          log('Сеанс готов.');
+        } catch (error) {
+          log(`Не удалось создать сеанс: ${error.message}`);
+          configContainer.style.display = 'block';
+          startBtn.disabled = false;
+        }
+      }
+
+      async function refreshSession() {
+        if (!state.sessionId) return;
+        const response = await fetch(`${API_BASE}/api/sessions/${state.sessionId}`);
+        if (!response.ok) throw new Error('Не удалось загрузить сеанс');
+        const data = await response.json();
+        state.items = data.items;
+        renderQuestion();
+      }
+
+      function renderQuestion() {
+        const { items, index } = state;
+        if (!items || items.length === 0) {
+          emptyState.style.display = 'block';
+          questionArea.style.display = 'none';
+          return;
+        }
+
+        if (index >= items.length) {
+          emptyState.style.display = 'block';
+          emptyState.textContent = 'Вопросы закончились. Завершите тест, чтобы увидеть результат.';
+          questionArea.style.display = 'none';
+          return;
+        }
+
+        const current = items[index];
+        emptyState.style.display = 'none';
+        questionArea.style.display = 'block';
+        questionTitle.textContent = `Вопрос ${index + 1} из ${items.length}`;
+        // normalize fields (handle different casings)
+        const title = current.title ?? current.Title ?? current.TitleText ?? null;
+        const statement = current.statement ?? current.Statement ?? current.Story ?? '';
+        const parameters = current.parameters ?? current.Parameters ?? null;
+
+        // build HTML: optional title, statement, and parameters list
+        let html = '';
+        if (title) html += `<div style="font-weight:600;margin-bottom:0.4rem;">${escapeHtml(title)}</div>`;
+        html += `<div>${escapeHtml(statement)}</div>`;
+        if (parameters && typeof parameters === 'object') {
+          const keys = Object.keys(parameters);
+          if (keys.length > 0) {
+            html += '<div style="margin-top:0.7rem;color:#cbd5f5;">Параметры:</div><ul style="color:#cbd5f5;">';
+            for (const k of keys) {
+              html += `<li>${escapeHtml(k)}: ${escapeHtml(String(parameters[k]))}</li>`;
+            }
+            html += '</ul>';
+          }
+        }
+        questionText.innerHTML = html;
+        answerInput.value = '';
+        answerInput.focus();
+        updateStats();
+      }
+
+      async function submitAnswer() {
+        const answer = answerInput.value.trim();
+        if (!answer) {
+          showInlineMessage('Введите ответ, либо воспользуйтесь пропуском.');
+          return;
+        }
+        await sendAnswer(answer);
+      }
+
+      async function skipQuestion() {
+        await sendAnswer('');
+      }
+
+      async function sendAnswer(answer) {
+        const current = state.items[state.index];
+        if (!current) return;
+        try {
+          // В demo-режиме не отправляем данные на сервер — симулируем приём ответа локально
+          if (state.demoMode) {
+            state.stats.total += 1;
+            // В демо у нас нет правильного ответа, помечаем как неверный по умолчанию
+            const isCorrect = false;
+            log(`Ответ (${state.index + 1}/${state.items.length}): ${isCorrect ? 'верно' : 'неверно'} (локально)`);
+            state.index += 1;
+            renderQuestion();
+            return;
+          }
+
+          const response = await fetch(
+            `${API_BASE}/api/sessions/${state.sessionId}/items/${current.itemId}/submit`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ answer })
+            }
+          );
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          state.stats.total += 1;
+          if (data.isCorrect) state.stats.correct += 1;
+          log(
+            `Ответ (${state.index + 1}/${state.items.length}): ${
+              data.isCorrect ? 'верно' : 'неверно'
+            }, баллы +${data.scoreAwarded}`
+          );
+          state.index += 1;
+          await refreshSession();
+        } catch (error) {
+          log(`Ошибка при отправке ответа: ${error.message}`);
+        }
+      }
+
+      async function finishSession() {
+        // support demoMode (local finish) as well as real server finish
+        if (state.demoMode) {
+          const total = state.items.length;
+          const correct = state.stats.correct || 0;
+          const totalScore = 0;
+          resultSummary.innerHTML = `
+            <p><strong>Итоговый результат (демо)</strong></p>
+            <p>Правильных ответов: ${correct} из ${total}</p>
+            <p>Набрано баллов: ${Number(totalScore).toFixed(2)}</p>
+          `;
+          log('Демо-сеанс завершён.');
+          configContainer.style.display = 'block';
+          startBtn.disabled = false;
+          state.sessionId = null;
+          state.demoMode = false;
+          questionArea.style.display = 'none';
+          emptyState.style.display = 'block';
+          emptyState.textContent = 'Готовы к новой попытке? Настройте параметры и начните.';
+          if (finishBtn) finishBtn.style.display = 'none';
+          return;
+        }
+
+        if (!state.sessionId) return;
+        try {
+          const response = await fetch(`${API_BASE}/api/sessions/${state.sessionId}/finish`, {
+            method: 'POST'
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          resultSummary.innerHTML = `
+            <p><strong>Итоговый результат</strong></p>
+            <p>Правильных ответов: ${data.correctAnswers} из ${data.totalAnswers}</p>
+            <p>Набрано баллов: ${Number(data.totalScore).toFixed(2)}</p>
+          `;
+          log('Сеанс завершён. Можно начать новый.');
+          // show config again for a new run
+          configContainer.style.display = 'block';
+          startBtn.disabled = false;
+          state.sessionId = null;
+          questionArea.style.display = 'none';
+          emptyState.style.display = 'block';
+          emptyState.textContent = 'Готовы к новой попытке? Настройте параметры и начните.';
+          if (finishBtn) finishBtn.style.display = 'none';
+        } catch (error) {
+          log(`Ошибка завершения: ${error.message}`);
+        }
+      }
+
+      function updateStats() {
+        statsEl.innerHTML = '';
+        const total = state.items.length;
+        const answered = state.stats.total;
+        const correct = state.stats.correct;
+
+        statsEl.appendChild(createStat(`Пройдено: ${answered} / ${total}`));
+        statsEl.appendChild(createStat(`Правильных: ${correct}`));
+      }
+
+      function createStat(text) {
+        const span = document.createElement('span');
+        span.className = 'stat-pill';
+        span.textContent = text;
+        return span;
+      }
+
+      function showInlineMessage(text) {
+        const pill = document.createElement('span');
+        pill.className = 'stat-pill';
+        pill.style.background = 'rgba(248, 113, 113, 0.15)';
+        pill.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+        pill.style.color = '#fecaca';
+        pill.textContent = text;
+        statsEl.appendChild(pill);
+        setTimeout(() => pill.remove(), 2000);
+      }
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        logEl.textContent += `[${time}] ${message}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // wire existing page controls
+      // create small control bindings
+      (function wireControls(){
+        const submitBtn = document.getElementById('submitBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const finishBtn = document.getElementById('finishBtn');
+        if(submitBtn) submitBtn.addEventListener('click', submitAnswer);
+        if(skipBtn) skipBtn.addEventListener('click', skipQuestion);
+        if(finishBtn) finishBtn.addEventListener('click', finishSession);
+      })();
+    </script>
+  </body>
+</html>
