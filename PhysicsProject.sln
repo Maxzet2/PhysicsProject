@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhysicsProject.Infrastructu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhysicsProject.Api", "PhysicsProject.Api\PhysicsProject.Api.csproj", "{D2511313-B23F-47CB-8054-0230591A877F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhysicsProject.Tests.Core", "PhysicsProject.Tests.Core\PhysicsProject.Tests.Core.csproj", "{BE33F0CF-EB4C-42CB-A867-1581B51B447B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,18 +69,6 @@ Global
 		{D2511313-B23F-47CB-8054-0230591A877F}.Release|x64.Build.0 = Release|Any CPU
 		{D2511313-B23F-47CB-8054-0230591A877F}.Release|x86.ActiveCfg = Release|Any CPU
 		{D2511313-B23F-47CB-8054-0230591A877F}.Release|x86.Build.0 = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|x64.Build.0 = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Debug|x86.Build.0 = Debug|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|x64.ActiveCfg = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|x64.Build.0 = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|x86.ActiveCfg = Release|Any CPU
-		{BE33F0CF-EB4C-42CB-A867-1581B51B447B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

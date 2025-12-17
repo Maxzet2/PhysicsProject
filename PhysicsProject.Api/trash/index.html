@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Physics Project</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav">
+        <div class="nav-title"><a href="/">Physics Project</a></div>
+        <div class="actions" id="guestActions">
+          <a class="btn" href="/login.html">Войти</a>
+          <a class="btn btn-secondary" href="/register.html">Регистрация</a>
+        </div>
+        <div class="actions" id="userActions" hidden>
+          <span class="btn btn-secondary" style="gap: 0.5rem; min-width: auto;">
+            👤 <span id="userNameLabel"></span>
+          </span>
+          <a class="btn" id="startDemoBtn" href="/test-session.html">Начать демо-тест</a>
+          <button class="btn btn-secondary" id="profileBtn" type="button">Профиль (в разработке)</button>
+          <button class="btn btn-secondary" id="logoutBtn" type="button">Выйти</button>
+        </div>
+      </nav>
+
+      <main class="hero">
+        <section id="guestSection">
+          <h1>Практикум по физике</h1>
+          <p>
+            Проходите интерактивные тесты по инженерной физике: система генерирует вариативные задачи,
+            моментально проверяет ответы и сохраняет прогресс. Начните подготовку уже сейчас.
+          </p>
+          <div class="actions">
+            <a class="btn" href="/register.html">Создать аккаунт</a>
+            <a class="btn btn-secondary" href="/login.html">У меня уже есть аккаунт</a>
+          </div>
+        </section>
+
+        <section id="userSection" hidden>
+          <div class="card" style="max-width: 820px; text-align: left;">
+            <h2>Готовы к новому тесту?</h2>
+            <p style="color: #cbd5f5; line-height: 1.7;">
+              Вы авторизованы, поэтому ваш прогресс будет сохранён. Выберите параметры тренировки и нажмите кнопку, чтобы получить 10 задач.
+            </p>
+            <form id="sessionForm" class="session-form" style="display: grid; gap: 1rem;">
+              <label>Режим тестирования
+                <select id="modeSelect" style="width: 100%; padding: 0.75rem; border-radius: 10px; border: 1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.6); color: #e2e8f0;">
+                  <option value="normal">Обычный</option>
+                  <option value="timed">На время</option>
+                  <option value="training">Тренировка</option>
+                </select>
+              </label>
+              <label>Количество задач
+                <input type="number" id="numItems" value="10" min="1" max="50" />
+              </label>
+              <button class="btn" type="submit">Создать демо-сессию</button>
+            </form>
+            <pre id="sessionResult" class="log" style="margin-top: 1.5rem; display: none;"></pre>
+          </div>
+        </section>
+      </main>
+
+      <section class="hero" style="padding-top: 0;">
+        <div class="card" style="max-width: 820px;">
+          <h2>Как это работает</h2>
+          <p style="text-align: left; line-height: 1.7; color: #cbd5f5;">
+            <strong>1.</strong> Зарегистрируйтесь и войдите в систему.<br />
+            <strong>2.</strong> Выберите режим тестирования. На старте доступно 10 алгоритмических
+            задач, но база и режимы будут расширяться.<br />
+            <strong>3.</strong> Получайте мгновенную обратную связь по каждому ответу, а затем
+            итоговый балл и статистику.<br />
+            <strong>4.</strong> Анализируйте пройденные тесты — результаты сохраняются в истории
+            пользователя.
+          </p>
+        </div>
+      </section>
+
+      <footer class="footer">
+        Physics Project · Учебный сервис для подготовки к контрольным работам по физике
+      </footer>
+    </div>
+
+    <script>
+      (function(){
+        const storageKey = 'pp_user';
+
+        function getCurrentUser(){
+          try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); }
+          catch { return null; }
+        }
+
+        function setCurrentUser(user){
+          if(user) localStorage.setItem(storageKey, JSON.stringify(user));
+          else localStorage.removeItem(storageKey);
+        }
+
+        function renderState(){
+          const user = getCurrentUser();
+          const loggedIn = !!(user && user.loggedIn && user.username);
+
+          const guestSection = document.getElementById('guestSection');
+          const userSection = document.getElementById('userSection');
+          const guestActions = document.getElementById('guestActions');
+          const userActions = document.getElementById('userActions');
+          const userNameLabel = document.getElementById('userNameLabel');
+
+          if(guestSection) guestSection.hidden = loggedIn;
+          if(guestActions) guestActions.hidden = loggedIn;
+          if(userSection) userSection.hidden = !loggedIn;
+          if(userActions) userActions.hidden = !loggedIn;
+          if(userNameLabel) userNameLabel.textContent = loggedIn ? user.username : '';
+        }
+
+        async function createDemoSession(numItems){
+          const response = await fetch(`/api/demo/create-demo-session?numItems=${numItems}`, {
+            method: 'POST'
+          });
+          if(!response.ok){
+            const text = await response.text();
+            throw new Error(text || 'Не удалось создать демо-сессию');
+          }
+          return response.json();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          renderState();
+
+          const logoutBtn = document.getElementById('logoutBtn');
+          if(logoutBtn){
+            logoutBtn.addEventListener('click', () => {
+              setCurrentUser(null);
+              renderState();
+            });
+          }
+
+          const profileBtn = document.getElementById('profileBtn');
+          if(profileBtn){
+            profileBtn.addEventListener('click', () => {
+              alert('Раздел профиля в разработке.');
+            });
+          }
+
+          const sessionForm = document.getElementById('sessionForm');
+          const sessionResult = document.getElementById('sessionResult');
+          if (sessionForm) {
+            sessionForm.addEventListener('submit', (event) => {
+              event.preventDefault();
+              const numItems = Number(document.getElementById('numItems')?.value || 10);
+              const mode = document.getElementById('modeSelect')?.value || 'normal';
+              // Перенаправляем на отдельную страницу теста с параметрами конфигурации
+              window.location.href = `/test-session.html?numItems=${encodeURIComponent(
+                numItems
+              )}&mode=${encodeURIComponent(mode)}`;
+            });
+          }
+
+          const startDemoBtn = document.getElementById('startDemoBtn');
+          if (startDemoBtn) {
+            // Перенаправляем пользователя на отдельную страницу теста
+            startDemoBtn.addEventListener('click', (e) => {
+              // Если это ссылка, стандартное поведение уже выполнит перенаправление;
+              // дополнительная логика здесь оставлена для совместимости.
+              // Предотвращаем отправку формы при старых версиях кнопки.
+              if (sessionForm) sessionForm.querySelector('[type=submit]')?.blur();
+              // явное перенаправление на случай динамических сценариев
+              window.location.href = '/test-session.html';
+            });
+          }
+        });
+
+        window.addEventListener('storage', (event) => {
+          if(event.key === storageKey) renderState();
+        });
+      })();
+    </script>
+  </body>
+</html>
+

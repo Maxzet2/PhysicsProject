@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Тест · Physics Project</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav class="nav">
+        <div class="nav-title"><a href="/">Physics Project</a></div>
+        <div class="actions" id="userPanel">
+          <span id="userName" class="stat-pill"></span>
+          <button id="logoutBtn" class="btn btn-secondary" type="button">Выйти</button>
+        </div>
+      </nav>
+
+      <main class="hero" style="padding-top: 2rem; width: 100%;">
+        <div class="card" id="sessionCard" style="max-width: 860px; width: 100%;">
+          <div class="session-header">
+            <div>
+              <h2 style="margin: 0;">Тренировочный тест</h2>
+              <p style="margin: 0.35rem 0 0; color: #cbd5f5;">
+                Алгоритмически сгенерированные задачи по физике. Каждая попытка — новый набор.
+              </p>
+            </div>
+            <button class="btn" id="startBtn">Начать тест</button>
+          </div>
+
+          <div id="questionArea" class="question-card" style="display: none;">
+            <h3 id="questionTitle"></h3>
+            <p id="questionText" style="line-height: 1.6;"></p>
+
+            <div class="answer-input">
+              <label for="answerInput">Ваш ответ</label>
+              <input id="answerInput" type="text" placeholder="Введите числовой или текстовый ответ" />
+            </div>
+
+            <div class="actions" style="justify-content: flex-start;">
+              <button class="btn" id="submitBtn">Отправить ответ</button>
+              <button class="btn btn-secondary" id="skipBtn">Пропустить</button>
+            </div>
+
+            <div class="stats" id="stats"></div>
+          </div>
+
+          <div id="emptyState" class="empty-state">
+            Здесь появятся вопросы после начала теста.
+          </div>
+        </div>
+
+        <div class="card" style="max-width: 860px; width: 100%; margin-top: 1.5rem;">
+          <h2>Итоги</h2>
+          <div id="resultSummary" style="color: #cbd5f5;">
+            Завершите тест, чтобы посмотреть результат и статистику ответов.
+          </div>
+          <div class="actions" style="margin-top: 1.2rem;">
+            <button class="btn btn-secondary" id="finishBtn" style="display: none;">Завершить тест</button>
+          </div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <div class="actions" style="margin-top: 1.2rem;">
+          <button class="btn" onclick="window.location.href='/test-session.html'">Перейти к тесту</button>
+        </div>
+      </main>
+
+      <footer class="footer">
+        Возникли вопросы? Напишите преподавателю или откройте новую сессию.
+      </footer>
+    </div>
+
+    <script>
+      const API_BASE = '';
+      const userStorageKey = 'pp_user';
+
+      const state = {
+        templateId: null,
+        sessionId: null,
+        items: [],
+        index: 0,
+        stats: { correct: 0, total: 0 }
+      };
+
+      const userPanel = document.getElementById('userPanel');
+      const userNameEl = document.getElementById('userName');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const startBtn = document.getElementById('startBtn');
+      const submitBtn = document.getElementById('submitBtn');
+      const skipBtn = document.getElementById('skipBtn');
+      const finishBtn = document.getElementById('finishBtn');
+      const questionArea = document.getElementById('questionArea');
+      const emptyState = document.getElementById('emptyState');
+      const questionTitle = document.getElementById('questionTitle');
+      const questionText = document.getElementById('questionText');
+      const answerInput = document.getElementById('answerInput');
+      const statsEl = document.getElementById('stats');
+      const resultSummary = document.getElementById('resultSummary');
+      const logEl = document.getElementById('log');
+
+      initPage();
+
+      async function initPage() {
+        const user = getCurrentUser();
+        if (!user) {
+          window.location.href = '/login.html';
+          return;
+        }
+
+        userNameEl.textContent = user.username || user.userName || 'Неизвестный пользователь';
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem(userStorageKey);
+          window.location.href = '/login.html';
+        });
+
+        if (!user.userId) {
+          startBtn.disabled = true;
+          log('Для запуска теста необходимо войти через актуальный интерфейс входа.');
+        } else {
+          startBtn.addEventListener('click', () => startSession(user.userId));
+        }
+        submitBtn.addEventListener('click', submitAnswer);
+        skipBtn.addEventListener('click', skipQuestion);
+        finishBtn.addEventListener('click', finishSession);
+
+        await loadDefaultTemplate();
+      }
+
+      function getCurrentUser() {
+        try {
+          const raw = localStorage.getItem(userStorageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      async function loadDefaultTemplate() {
+        try {
+          const response = await fetch(`${API_BASE}/api/templates/default`);
+          if (!response.ok) throw new Error('Не удалось получить шаблон');
+          const data = await response.json();
+          state.templateId = data.id;
+          log('Шаблон задач получен.');
+        } catch (error) {
+          log(`Ошибка загрузки шаблона: ${error.message}`);
+          startBtn.disabled = true;
+        }
+      }
+
+      async function startSession(userId) {
+        if (!state.templateId) {
+          log('Шаблон задач недоступен.');
+          return;
+        }
+        startBtn.disabled = true;
+        log('Создаём новый сеанс...');
+        try {
+          const response = await fetch(`${API_BASE}/api/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              templateId: state.templateId,
+              numItems: 10,
+              mode: 'Normal'
+            })
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          state.sessionId = data.sessionId;
+          state.index = 0;
+          state.stats = { correct: 0, total: 0 };
+          resultSummary.innerHTML =
+            'Тест запущен. Отвечайте на вопросы, чтобы увидеть итоговую статистику.';
+          await refreshSession();
+          finishBtn.style.display = 'inline-flex';
+          log('Сеанс создан.');
+        } catch (error) {
+          log(`Не удалось создать сеанс: ${error.message}`);
+          startBtn.disabled = false;
+        }
+      }
+
+      async function refreshSession() {
+        if (!state.sessionId) return;
+        const response = await fetch(`${API_BASE}/api/sessions/${state.sessionId}`);
+        if (!response.ok) throw new Error('Не удалось загрузить сеанс');
+        const data = await response.json();
+        state.items = data.items;
+        renderQuestion();
+      }
+
+      function renderQuestion() {
+        const { items, index } = state;
+        if (!items || items.length === 0) {
+          emptyState.style.display = 'block';
+          questionArea.style.display = 'none';
+          return;
+        }
+
+        if (index >= items.length) {
+          emptyState.style.display = 'block';
+          emptyState.textContent = 'Вопросы закончились. Завершите тест, чтобы увидеть результат.';
+          questionArea.style.display = 'none';
+          return;
+        }
+
+        const current = items[index];
+        emptyState.style.display = 'none';
+        questionArea.style.display = 'block';
+        questionTitle.textContent = `Вопрос ${index + 1} из ${items.length}`;
+        questionText.textContent = current.statement;
+        answerInput.value = '';
+        answerInput.focus();
+        updateStats();
+      }
+
+      async function submitAnswer() {
+        const answer = answerInput.value.trim();
+        if (!answer) {
+          showInlineMessage('Введите ответ, либо воспользуйтесь пропуском.');
+          return;
+        }
+
+        await sendAnswer(answer);
+      }
+
+      async function skipQuestion() {
+        await sendAnswer('');
+      }
+
+      async function sendAnswer(answer) {
+        const current = state.items[state.index];
+        if (!current) return;
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/sessions/${state.sessionId}/items/${current.itemId}/submit`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ answer })
+            }
+          );
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          state.stats.total += 1;
+          if (data.isCorrect) state.stats.correct += 1;
+          log(
+            `Ответ (${state.index + 1}/${state.items.length}): ${
+              data.isCorrect ? 'верно' : 'неверно'
+            }, баллы +${data.scoreAwarded}`
+          );
+          state.index += 1;
+          await refreshSession();
+        } catch (error) {
+          log(`Ошибка при отправке ответа: ${error.message}`);
+        }
+      }
+
+      async function finishSession() {
+        if (!state.sessionId) return;
+        try {
+          const response = await fetch(`${API_BASE}/api/sessions/${state.sessionId}/finish`, {
+            method: 'POST'
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          resultSummary.innerHTML = `
+            <p><strong>Итоговый результат</strong></p>
+            <p>Правильных ответов: ${data.correctAnswers} из ${data.totalAnswers}</p>
+            <p>Набрано баллов: ${Number(data.totalScore).toFixed(2)}</p>
+          `;
+          log('Сеанс завершён. Можно начать новый.');
+          startBtn.disabled = false;
+          finishBtn.style.display = 'none';
+          questionArea.style.display = 'none';
+          emptyState.style.display = 'block';
+          emptyState.textContent = 'Готовы к новой попытке? Запустите следующий тест.';
+        } catch (error) {
+          log(`Ошибка завершения: ${error.message}`);
+        }
+      }
+
+      function updateStats() {
+        statsEl.innerHTML = '';
+        const total = state.items.length;
+        const answered = state.stats.total;
+        const correct = state.stats.correct;
+
+        statsEl.appendChild(createStat(`Пройдено: ${answered} / ${total}`));
+        statsEl.appendChild(createStat(`Правильных: ${correct}`));
+      }
+
+      function createStat(text) {
+        const span = document.createElement('span');
+        span.className = 'stat-pill';
+        span.textContent = text;
+        return span;
+      }
+
+      function showInlineMessage(text) {
+        const pill = document.createElement('span');
+        pill.className = 'stat-pill';
+        pill.style.background = 'rgba(248, 113, 113, 0.15)';
+        pill.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+        pill.style.color = '#fecaca';
+        pill.textContent = text;
+        statsEl.appendChild(pill);
+        setTimeout(() => pill.remove(), 2000);
+      }
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        logEl.textContent += `[${time}] ${message}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
+

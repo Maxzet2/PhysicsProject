@@ -6,6 +6,8 @@ public interface IProblemRepository
 {
     Task<ProblemTemplate?> GetTemplateByIdAsync(Guid id, CancellationToken ct);
     Task SaveInstanceAsync(ProblemInstance instance, CancellationToken ct);
+    Task<ProblemInstance?> GetInstanceByIdAsync(Guid id, CancellationToken ct);
+    Task<IEnumerable<ProblemTemplate>> GetTemplatesAsync(CancellationToken ct);
 }
 
 public interface ISessionRepository

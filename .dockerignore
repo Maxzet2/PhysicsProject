@@ -1,0 +1,14 @@
+.git
+.gitignore
+bin/
+obj/
+**/bin/
+**/obj/
+**/.vs/
+.vscode/
+Dockerfile
+Dockerfile.*
+*.user
+*.swp
+*.DS_Store
+node_modules/

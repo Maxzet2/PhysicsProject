@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PhysicsProject — Demo</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>PhysicsProject</h1>
+
+    <section id="guestSection" class="card" hidden>
+      <h2>Вы не зарегистрированы</h2>
+      <p>Пожалуйста, зарегистрируйтесь, чтобы сохранить прогресс и начать тесты.</p>
+      <form id="registerForm">
+        <input type="text" id="username" placeholder="Имя пользователя" required />
+        <input type="password" id="password" placeholder="Пароль" required />
+        <button type="submit">Зарегистрироваться</button>
+      </form>
+      <div id="registerResult" class="result"></div>
+    </section>
+
+    <section id="userSection" class="card" hidden>
+      <h2>Добро пожаловать, <span id="userName"></span></h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="openProfile">Профиль (в разработке)</button>
+        <button id="logoutBtn">Выйти</button>
+      </div>
+
+      <hr />
+
+      <h3>Начать тест</h3>
+      <label>Режим:
+        <select id="modeSelect">
+          <option value="normal">Обычный</option>
+          <option value="timed">На время</option>
+          <option value="training">Тренировка</option>
+        </select>
+      </label>
+      <label>Число вопросов:
+        <input type="number" id="numItems" value="10" min="1" max="50" />
+      </label>
+      <button id="createSession">Создать тест</button>
+
+      <div id="sessionResult" class="result"></div>
+    </section>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
