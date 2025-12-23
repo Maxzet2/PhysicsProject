@@ -19,7 +19,6 @@ public sealed class EfSessionRepository : ISessionRepository
     public async Task<TestSession?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var entity = await _dbContext.TestSessions
-            .AsNoTracking()
             .Include(s => s.Items)
             .Include(s => s.Submissions)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
@@ -28,55 +27,66 @@ public sealed class EfSessionRepository : ISessionRepository
     }
 
     public async Task SaveAsync(TestSession session, CancellationToken ct)
-    {
-        var entity = await _dbContext.TestSessions
-            .Include(s => s.Items)
-            .Include(s => s.Submissions)
-            .FirstOrDefaultAsync(s => s.Id == session.Id, ct);
-
-        if (entity is null)
+{
+    var entity = await _dbContext.TestSessions
+        .Include(s => s.Items)
+        .Include(s => s.Submissions)
+        .FirstOrDefaultAsync(s => s.Id == session.Id, ct);
+        
+    if (entity == null)
         {
-            entity = new TestSessionEntity { Id = session.Id };
-            _dbContext.TestSessions.Add(entity);
-        }
-
-        entity.UserId = session.UserId;
-        entity.SectionId = session.SectionId;
-        entity.Mode = session.Mode;
-        entity.StartedAt = session.StartedAt;
-        entity.FinishedAt = session.FinishedAt;
-
-        entity.Items.Clear();
-        foreach (var item in session.Items)
-        {
-            entity.Items.Add(new SessionItemEntity
+            entity = new TestSessionEntity
             {
-                Id = item.Id,
-                SessionId = session.Id,
-                InstanceId = item.InstanceId,
-                OrderIndex = item.OrderIndex,
-                MaxScore = item.MaxScore
-            });
+                Id = session.Id,
+                UserId = session.UserId,
+                SectionId = session.SectionId,
+                Mode = session.Mode,
+                StartedAt = session.StartedAt,
+                FinishedAt = session.FinishedAt
+            };
+
+            foreach (var item in session.Items)
+            {
+                entity.Items.Add(new SessionItemEntity
+                {
+                    Id = item.Id,
+                    SessionId = session.Id,
+                    InstanceId = item.InstanceId,
+                    OrderIndex = item.OrderIndex,
+                    MaxScore = item.MaxScore
+                });
+            }
+
+            _dbContext.TestSessions.Add(entity);
+            await _dbContext.SaveChangesAsync(ct);
+            return;
         }
 
-        entity.Submissions.Clear();
-        foreach (var submission in session.Submissions)
+    entity.FinishedAt = session.FinishedAt;
+
+    foreach (var submission in session.Submissions)
+    {
+        if (entity.Submissions.All(s => s.Id != submission.Id))
         {
-            entity.Submissions.Add(new SubmissionEntity
+            var submissionEntity = new SubmissionEntity
             {
                 Id = submission.Id,
-                SessionId = session.Id,
+                SessionId = entity.Id,
                 SessionItemId = submission.SessionItemId,
                 SubmittedAt = submission.SubmittedAt,
                 RawAnswer = submission.RawAnswer,
                 IsCorrect = submission.IsCorrect,
                 ScoreAwarded = submission.ScoreAwarded,
                 Feedback = submission.Feedback
-            });
-        }
+            };
 
-        await _dbContext.SaveChangesAsync(ct);
+            _dbContext.Entry(submissionEntity).State = EntityState.Added;
+            entity.Submissions.Add(submissionEntity);
+        }
     }
+
+    await _dbContext.SaveChangesAsync(ct);
+}
 
     private static TestSession MapToDomain(TestSessionEntity entity)
     {
@@ -102,6 +112,7 @@ public sealed class EfSessionRepository : ISessionRepository
         };
 
         session.RestoreFinishedAt(entity.FinishedAt);
+
         session.ReplaceSubmissions(entity.Submissions
             .OrderBy(s => s.SubmittedAt)
             .Select(s => new Submission

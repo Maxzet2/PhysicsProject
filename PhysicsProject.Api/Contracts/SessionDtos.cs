@@ -8,6 +8,21 @@ public record SubmitAnswerResponse(bool IsCorrect, decimal ScoreAwarded, string 
 
 public record FinishSessionResponse(decimal TotalScore, int CorrectAnswers, int TotalAnswers, bool Passed);
 
-public record SessionItemDto(Guid ItemId, Guid InstanceId, int Order, decimal MaxScore, string Statement, IReadOnlyDictionary<string, object> Parameters, bool Submitted);
-public record SessionDto(Guid Id, Guid UserId, Guid? SectionId, string Mode, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, IReadOnlyList<SessionItemDto> Items);
+public record SessionItemDto(
+    Guid ItemId,
+    Guid InstanceId,
+    int Order,
+    decimal MaxScore,
+    string Statement,
+    bool Submitted
+);
 
+public record SessionDto(
+    Guid Id,
+    Guid UserId,
+    Guid? SectionId,
+    string Mode,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? FinishedAt,
+    IReadOnlyList<SessionItemDto> Items
+);

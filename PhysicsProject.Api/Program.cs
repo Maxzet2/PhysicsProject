@@ -37,6 +37,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("Default");
 app.UseAuthorization();
+app.MapFallbackToFile("index.html");
 
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok("OK"));

@@ -11,7 +11,6 @@ public class SessionsController : ControllerBase
     private readonly ISessionService _sessionService;
     private readonly ISessionRepository _sessionRepository;
     private readonly IProblemRepository _problemRepository;
-
     private readonly ISectionFlowService _sectionFlowService;
 
     public SessionsController(ISessionService sessionService, ISessionRepository sessionRepository, IProblemRepository problemRepository, ISectionFlowService sectionFlowService)
@@ -25,7 +24,14 @@ public class SessionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CreateSessionResponse>> CreateSession(CreateSessionRequest request, CancellationToken ct)
     {
-        var session = await _sessionService.CreateSessionFromTemplateAsync(request.UserId, request.TemplateId, request.NumItems, request.Mode, request.SectionId, ct);
+        var session = await _sessionService.CreateSessionFromTemplateAsync(
+            request.UserId,
+            request.TemplateId,
+            request.NumItems,
+            request.Mode,
+            request.SectionId,
+            ct
+        );
         return Ok(new CreateSessionResponse(session.Id, session.StartedAt, session.Items.Count, session.SectionId));
     }
 
@@ -42,17 +48,26 @@ public class SessionsController : ControllerBase
             if (instance is null) continue;
 
             var submitted = session.Submissions.Any(s => s.SessionItemId == item.Id);
+
             items.Add(new SessionItemDto(
                 item.Id,
                 item.InstanceId,
                 item.OrderIndex,
                 item.MaxScore,
                 instance.Statement,
-                instance.Parameters,
-                submitted));
+                submitted
+            ));
         }
 
-        return Ok(new SessionDto(session.Id, session.UserId, session.SectionId, session.Mode, session.StartedAt, session.FinishedAt, items));
+        return Ok(new SessionDto(
+            session.Id,
+            session.UserId,
+            session.SectionId,
+            session.Mode,
+            session.StartedAt,
+            session.FinishedAt,
+            items
+        ));
     }
 
     [HttpPost("{sessionId:guid}/items/{itemId:guid}/submit")]
@@ -68,6 +83,7 @@ public class SessionsController : ControllerBase
         var result = await _sessionService.FinishSessionAsync(sessionId, ct);
         var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
         var passed = false;
+
         if (session?.SectionId is Guid sectionId)
         {
             if (string.Equals(session.Mode, "training", StringComparison.OrdinalIgnoreCase))
